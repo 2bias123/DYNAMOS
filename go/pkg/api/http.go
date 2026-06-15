@@ -62,11 +62,22 @@ type Options struct {
 }
 
 type Relation struct {
-	ID                      string   `json:"ID"`
-	RequestTypes            []string `json:"requestTypes"`
-	DataSets                []string `json:"dataSets"`
-	AllowedArchetypes       []string `json:"allowedArchetypes"`
-	AllowedComputeProviders []string `json:"allowedComputeProviders"`
+	ID                      string           `json:"ID"`
+	RequestTypes            []string         `json:"requestTypes"`
+	DataSets                []string         `json:"dataSets"`
+	AllowedArchetypes       []string         `json:"allowedArchetypes"`
+	AllowedComputeProviders []string         `json:"allowedComputeProviders"`
+	StateDirectives         *StateDirectives `json:"stateDirectives,omitempty"`
+}
+
+// StateDirectives governs persistence of intermediate state for a Relation.
+type StateDirectives struct {
+	Allowed bool `json:"allowed"`
+	// Seconds, not time.Duration: keeps the etcd JSON human-readable.
+	RetentionSeconds int64 `json:"retentionSeconds"`
+	ResumeAllowed    bool  `json:"resumeAllowed"`
+	// MVP: "purge" only. "freeze" reserved, rejected. Unknown values fail-closed.
+	OnRevocation string `json:"onRevocation"`
 }
 
 type Agreement struct {

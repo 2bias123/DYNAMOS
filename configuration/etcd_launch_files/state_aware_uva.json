@@ -1,0 +1,37 @@
+[
+    {
+        "name": "UVA",
+        "relations": {
+            "jorrit.stutterheim@cloudnation.nl": {
+                "ID": "12345-state-aware",
+                "requestTypes": [
+                    "sqlDataRequest"
+                ],
+                "dataSets": [
+                    "wageGap"
+                ],
+                "allowedArchetypes": [
+                    "computeToData"
+                ],
+                "allowedComputeProviders": [
+                    "SURF"
+                ],
+                "stateDirectives": {
+                    "allowed": true,
+                    "retentionSeconds": 600,
+                    "resumeAllowed": true,
+                    "onRevocation": "purge"
+                }
+            }
+        },
+        "computeProviders": [
+            "SURF",
+            "otherCompany"
+        ],
+        "archetypes": [
+            "computeToData",
+            "dataThroughTtp",
+            "reproducableScience"
+        ]
+    }
+]
