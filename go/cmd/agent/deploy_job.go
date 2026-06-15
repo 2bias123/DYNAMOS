@@ -121,6 +121,13 @@ func deployJob(ctx context.Context, msChain []mschain.MicroserviceMetadata, jobN
 				{Name: "NR_OF_DATA_PROVIDERS", Value: strconv.Itoa(nr_of_data_providers)},
 				// Add the role to allow further processing based on the role of the agent containing this microservice, such as dataProvider or computeProvider
 				{Name: "AGENT_ROLE", Value: compositionRequest.Role},
+				{Name: "REQUEST_USER", Value: compositionRequest.User.GetUserName()},
+				{Name: "REQUEST_TYPE", Value: compositionRequest.RequestType},
+				{Name: "LOCAL_JOB_NAME", Value: newJobName},
+				// Port scheme: sidecar = firstPortMicroservice - 1, policy gateway =
+				// firstPortMicroservice - 2. Verify no collaborator/helper port collision
+				// before merge.
+				{Name: "GATEWAY_PORT", Value: strconv.Itoa(firstPortMicroservice - 2)},
 			},
 			// Add additional container configuration here as needed
 		}

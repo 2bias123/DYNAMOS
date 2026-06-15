@@ -11,6 +11,7 @@ type MicroserviceMetadata struct {
 	Label             string   `json:"label"`
 	AllowedOutputs    []string `json:"allowedOutputs"`
 	InvalidArchetypes []string `json:"invalidArchetypes"`
+	RequiresGateway   bool     `json:"requiresGateway,omitempty"`
 }
 
 type Node struct {
