@@ -10,7 +10,7 @@ var (
 	logger = lib.InitLogger(logLevel)
 )
 
-func GenerateChain(services []MicroserviceMetadata) ([]MicroserviceMetadata, error) {
+func GenerateChain(services []MicroserviceMetadata) ([]MicroserviceMetadata, bool, error) {
 
 	// Build a map of nodes for each service
 	nodes := make(map[string]*Node)
@@ -34,15 +34,19 @@ func GenerateChain(services []MicroserviceMetadata) ([]MicroserviceMetadata, err
 	order, err := topologicalSort(nodes)
 	if err != nil {
 		logger.Sugar().Errorf("Error in topological sort: %v", err)
-		return nil, err
+		return nil, false, err
 	}
 
 	filteredOrder := []MicroserviceMetadata{}
+	requiresGateway := false
 	for _, node := range order {
 		filteredOrder = append(filteredOrder, *node.Service)
+		if node.Service.RequiresGateway {
+			requiresGateway = true
+		}
 	}
 
-	return filteredOrder, nil
+	return filteredOrder, requiresGateway, nil
 }
 
 func topologicalSort(nodes map[string]*Node) ([]*Node, error) {

@@ -123,13 +123,13 @@ func handleQueue(ctx context.Context, jobName string, localJobname string, userN
 	return ctx
 }
 
-func generateMicroserviceChain(compositionRequest *pb.CompositionRequest, options map[string]bool) ([]mschain.MicroserviceMetadata, error) {
+func generateMicroserviceChain(compositionRequest *pb.CompositionRequest, options map[string]bool) ([]mschain.MicroserviceMetadata, bool, error) {
 	logger.Sugar().Debugf("Starting generateMicroserviceChain")
 
 	var requestType mschain.RequestType
 	_, err := etcd.GetAndUnmarshalJSON(etcdClient, fmt.Sprintf("/requestTypes/%s", compositionRequest.RequestType), &requestType)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	logger.Sugar().Debugf("After GetAndUnmarshalJSON  compositionRequest.RequestType)")
 
@@ -138,21 +138,21 @@ func generateMicroserviceChain(compositionRequest *pb.CompositionRequest, option
 	// Returns required Microservices
 	err = getRequiredMicroservices(&msMetadata, &requestType, compositionRequest.Role)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	err = getOptionalMicroservices(&msMetadata, &requestType, compositionRequest.Role, compositionRequest.RequestType, options)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	msChain, err := mschain.GenerateChain(msMetadata)
+	msChain, requiresGateway, err := mschain.GenerateChain(msMetadata)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	for _, ms := range msChain {
 		logger.Info(ms.Name)
 	}
 
-	return msChain, nil
+	return msChain, requiresGateway, nil
 }

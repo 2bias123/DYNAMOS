@@ -22,13 +22,13 @@ func generateChainAndDeploy(ctx context.Context, compositionRequest *pb.Composit
 	ctx, span := trace.StartSpan(ctx, serviceName+"/func: generateChainAndDeploy")
 	defer span.End()
 
-	msChain, err := generateMicroserviceChain(compositionRequest, options)
+	msChain, requiresGateway, err := generateMicroserviceChain(compositionRequest, options)
 	if err != nil {
 		logger.Sugar().Errorf("Error generating microservice chain %v", err)
 		return ctx, nil, err
 	}
 	logger.Sugar().Debug(msChain)
-	createdJob, err := deployJob(ctx, msChain, localJobName, compositionRequest)
+	createdJob, err := deployJob(ctx, msChain, localJobName, compositionRequest, requiresGateway)
 	if err != nil {
 		logger.Sugar().Errorf("Error generating microservice chain %v", err)
 		return ctx, nil, err
@@ -37,7 +37,7 @@ func generateChainAndDeploy(ctx context.Context, compositionRequest *pb.Composit
 	return ctx, createdJob, nil
 }
 
-func deployJob(ctx context.Context, msChain []mschain.MicroserviceMetadata, jobName string, compositionRequest *pb.CompositionRequest) (*batchv1.Job, error) {
+func deployJob(ctx context.Context, msChain []mschain.MicroserviceMetadata, jobName string, compositionRequest *pb.CompositionRequest, requiresGateway bool) (*batchv1.Job, error) {
 	logger.Debug("Starting deployJob")
 
 	dataStewardName := strings.ToLower(serviceName)
@@ -138,6 +138,16 @@ func deployJob(ctx context.Context, msChain []mschain.MicroserviceMetadata, jobN
 
 	job.Spec.Template.Spec.Containers = append(job.Spec.Template.Spec.Containers, addSidecar())
 
+	if requiresGateway {
+		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, v1.Volume{
+			Name: "gateway-state",
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		})
+		job.Spec.Template.Spec.Containers = append(job.Spec.Template.Spec.Containers, addGateway(compositionRequest, newJobName, jobName))
+	}
+
 	if clientSet == nil {
 		clientSet = getKubeClient()
 	}
@@ -150,6 +160,40 @@ func deployJob(ctx context.Context, msChain []mschain.MicroserviceMetadata, jobN
 	}
 
 	return createdJob, nil
+}
+
+func addGateway(compositionRequest *pb.CompositionRequest, localJobName string, jobName string) v1.Container {
+	gatewayName := "policy-checkpoint-gateway"
+
+	repositoryName := os.Getenv("GATEWAY_REPOSITORY_NAME")
+	if repositoryName == "" {
+		repositoryName = "dynamos1"
+	}
+
+	gatewayTag := getMicroserviceTag(gatewayName)
+
+	fullImage := fmt.Sprintf("%s/%s:%s", repositoryName, gatewayName, gatewayTag)
+	logger.Sugar().Debugf("Gateway image name: %s", fullImage)
+
+	return v1.Container{
+		Name:            gatewayName,
+		Image:           fullImage,
+		ImagePullPolicy: "IfNotPresent",
+		Env: []v1.EnvVar{
+			{Name: "DATA_STEWARD_NAME", Value: strings.ToUpper(serviceName)},
+			{Name: "REQUEST_USER", Value: compositionRequest.User.GetUserName()},
+			{Name: "REQUEST_TYPE", Value: compositionRequest.RequestType},
+			{Name: "JOB_NAME", Value: jobName},
+			{Name: "LOCAL_JOB_NAME", Value: localJobName},
+			{Name: "STATE_DIR", Value: "/state"},
+			{Name: "GATEWAY_PORT", Value: strconv.Itoa(firstPortMicroservice - 2)},
+			{Name: "OC_AGENT_HOST", Value: tracingHost},
+			{Name: "INACTIVITY_TIMEOUT_SECONDS", Value: "300"},
+		},
+		VolumeMounts: []v1.VolumeMount{
+			{Name: "gateway-state", MountPath: "/state"},
+		},
+	}
 }
 
 func addSidecar() v1.Container {

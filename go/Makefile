@@ -5,7 +5,7 @@ branch_name := $(shell git rev-parse --abbrev-ref HEAD | sed 's#/#-#g')
 # List of SQL-based microservices to build and push
 sql_microservices := sql-algorithm sql-anonymize sql-aggregate sql-test
 # List of DYNAMOS core services
-dynamos := sidecar policy-enforcer orchestrator agent api-gateway
+dynamos := sidecar policy-enforcer orchestrator agent api-gateway policy-checkpoint-gateway
 # Docker Hub account for tagging and pushing images
 dockerhub_account := dynamos1
 
